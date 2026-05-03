@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiet Media — Logo Builder</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e0e0e;
+  --panel: #161616;
+  --border: #252525;
+  --muted: #555;
+  --label: #888;
+  --val: #e8e8e8;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--label);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+/* ── Panel ───────────────────────────────── */
+#panel {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 16px;
+}
+
+.panel-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-head h1 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.panel-head p { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+.section { padding: 14px 20px 2px; }
+
+.sec-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.ctrl { margin-bottom: 13px; }
+
+.ctrl-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.ctrl-name { font-size: 12px; color: var(--label); }
+
+.ctrl-val {
+  font-size: 11px;
+  color: var(--val);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: #2a2a2a;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #d0d0d0;
+  border: 2px solid #0e0e0e;
+  cursor: pointer;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb { background: #fff; }
+
+.sep { border: none; border-top: 1px solid var(--border); margin: 6px 0 0; }
+
+/* linecap toggle */
+.toggle-row { display: flex; gap: 0; margin-top: 4px; }
+
+.tog {
+  flex: 1;
+  padding: 5px 0;
+  background: none;
+  border: 1px solid #2a2a2a;
+  border-right: none;
+  color: #555;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.1s, color 0.1s;
+}
+
+.tog:first-child { border-radius: 4px 0 0 4px; }
+.tog:last-child  { border-radius: 0 4px 4px 0; border-right: 1px solid #2a2a2a; }
+.tog.on { background: #2a2a2a; color: #e0e0e0; }
+
+/* colors */
+.color-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+
+.color-ctrl { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+
+input[type="color"] {
+  width: 28px;
+  height: 22px;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  padding: 1px;
+}
+
+.transparent-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--label);
+  cursor: pointer;
+  user-select: none;
+}
+
+input[type="checkbox"] { accent-color: #888; cursor: pointer; }
+
+/* export */
+.panel-foot { padding: 12px 20px 0; margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+
+.btn-primary {
+  width: 100%;
+  padding: 9px;
+  background: #e0e0e0;
+  color: #111;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.btn-primary:hover { background: #fff; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 8px;
+  background: none;
+  color: #666;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+.btn-secondary:hover { color: #ccc; border-color: #444; }
+
+/* ── Preview ─────────────────────────────── */
+#preview {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  position: relative;
+  background:
+    repeating-conic-gradient(#1c1c1c 0% 25%, #141414 0% 50%)
+    0 0 / 24px 24px;
+}
+
+#logo-wrap {
+  width: clamp(200px, 38vw, 460px);
+  height: clamp(200px, 38vw, 460px);
+  box-shadow: 0 0 0 1px #2a2a2a;
+}
+
+#logo-svg { width: 100%; height: 100%; display: block; }
+
+#swap-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #555;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+#swap-btn:hover { color: #ccc; }
+
+#copy-toast {
+  position: absolute;
+  bottom: 52px;
+  right: 16px;
+  background: #2a2a2a;
+  color: #ccc;
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+#copy-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <div class="panel-head">
+    <h1>Quiet Media</h1>
+    <p>Logo Builder</p>
+  </div>
+
+  <!-- Shape -->
+  <div class="section">
+    <div class="sec-label">Shape</div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">
+        <span class="ctrl-name">Rotation</span>
+        <span class="ctrl-val" id="v-barAngle">0°</span>
+      </div>
+      <input type="range" id="barAngle" min="-180" max="180" value="0" step="1">
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">
+        <span class="ctrl-name">Gap / breathing room</span>
+        <span class="ctrl-val" id="v-gapAngle">12°</span>
+      </div>
+      <input type="range" id="gapAngle" min="1" max="85" value="12" step="0.5">
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- Stroke -->
+  <div class="section">
+    <div class="sec-label">Stroke</div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">
+        <span class="ctrl-name">Circle weight</span>
+        <span class="ctrl-val" id="v-circleWidth">8</span>
+      </div>
+      <input type="range" id="circleWidth" min="0.5" max="50" value="8" step="0.5">
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">
+        <span class="ctrl-name">Bar weight</span>
+        <span class="ctrl-val" id="v-barWidth">8</span>
+      </div>
+      <input type="range" id="barWidth" min="0.5" max="50" value="8" step="0.5">
+    </div>
+
+    <div class="ctrl-row" style="margin-bottom:5px">
+      <span class="ctrl-name">Linecap</span>
+    </div>
+    <div class="toggle-row">
+      <button class="tog on" id="cap-round"  onclick="setLinecap('round')">Round</button>
+      <button class="tog"    id="cap-butt"   onclick="setLinecap('butt')">Flat</button>
+      <button class="tog"    id="cap-square" onclick="setLinecap('square')">Square</button>
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- Bar radial positions -->
+  <div class="section">
+    <div class="sec-label">Bar — Radial Position</div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">
+        <span class="ctrl-name">Start (inner reach)</span>
+        <span class="ctrl-val" id="v-innerReach">0%</span>
+      </div>
+      <input type="range" id="innerReach" min="-130" max="130" value="0" step="1">
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">
+        <span class="ctrl-name">End (outer reach)</span>
+        <span class="ctrl-val" id="v-outerReach">108%</span>
+      </div>
+      <input type="range" id="outerReach" min="-130" max="140" value="108" step="1">
+    </div>
+
+    <div style="font-size:10px;color:#333;margin-top:-5px;margin-bottom:8px">
+      0 = center &nbsp;·&nbsp; 100% = circle edge
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- Color -->
+  <div class="section">
+    <div class="sec-label">Color</div>
+    <div class="color-row">
+      <div class="color-ctrl">
+        <input type="color" id="fgColor" value="#ffffff">
+        <span>Stroke</span>
+      </div>
+      <div class="color-ctrl">
+        <input type="color" id="bgColor" value="#111111">
+        <span>Background</span>
+      </div>
+    </div>
+    <label class="transparent-row">
+      <input type="checkbox" id="transparentBg">
+      Transparent background
+    </label>
+  </div>
+
+  <div class="panel-foot">
+    <button class="btn-primary" onclick="exportSVG()">↓ Download SVG</button>
+    <button class="btn-secondary" onclick="copySVG()">Copy SVG code</button>
+  </div>
+</div>
+
+<!-- Preview -->
+<div id="preview">
+  <div id="logo-wrap">
+    <svg id="logo-svg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <rect id="svgBg" width="400" height="400" fill="#111111"/>
+      <path id="arcEl" fill="none" stroke-linecap="round"/>
+      <line id="barEl" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <button id="swap-btn" onclick="swapColors()">⇄ Swap colors</button>
+  <div id="copy-toast">Copied!</div>
+</div>
+
+<script>
+const CX = 200, CY = 200, R = 130;
+let linecap = 'round';
+
+const toRad = d => d * Math.PI / 180;
+
+// angle: 0=up, CW → SVG [x,y]
+function pt(angle) {
+  const a = toRad(angle);
+  return [CX + R * Math.sin(a), CY - R * Math.cos(a)];
+}
+
+function get(id)  { return parseFloat(document.getElementById(id).value); }
+function getS(id) { return document.getElementById(id).value; }
+
+function setLinecap(cap) {
+  linecap = cap;
+  ['round','butt','square'].forEach(c =>
+    document.getElementById('cap-' + c).classList.toggle('on', c === cap)
+  );
+  render();
+}
+
+function render() {
+  const barAngle   = get('barAngle');
+  const gapAngle   = get('gapAngle');
+  const cw         = get('circleWidth');
+  const bw         = get('barWidth');
+  const inner      = get('innerReach');
+  const outer      = get('outerReach');
+  const fg         = getS('fgColor');
+  const bg         = getS('bgColor');
+  const transparent = document.getElementById('transparentBg').checked;
+
+  document.getElementById('v-barAngle').textContent   = barAngle + '°';
+  document.getElementById('v-gapAngle').textContent   = gapAngle.toFixed(1) + '°';
+  document.getElementById('v-circleWidth').textContent = cw;
+  document.getElementById('v-barWidth').textContent   = bw;
+  document.getElementById('v-innerReach').textContent = inner + '%';
+  document.getElementById('v-outerReach').textContent = outer + '%';
+
+  // Background
+  const svgBg = document.getElementById('svgBg');
+  if (transparent) {
+    svgBg.setAttribute('fill', 'transparent');
+    svgBg.setAttribute('fill-opacity', '0');
+  } else {
+    svgBg.setAttribute('fill', bg);
+    svgBg.setAttribute('fill-opacity', '1');
+  }
+
+  // Bar direction unit vector (barAngle=0 → pointing up)
+  const a  = toRad(barAngle);
+  const dx = Math.sin(a);
+  const dy = -Math.cos(a);
+
+  // inner: bar extends from center in -dir (tail, away from gap)
+  // outer: bar extends from center in +dir (tip, toward gap)
+  const x1 = CX - dx * R * inner / 100;
+  const y1 = CY - dy * R * inner / 100;
+  const x2 = CX + dx * R * outer / 100;
+  const y2 = CY + dy * R * outer / 100;
+
+  const barEl = document.getElementById('barEl');
+  barEl.setAttribute('x1', x1.toFixed(3));
+  barEl.setAttribute('y1', y1.toFixed(3));
+  barEl.setAttribute('x2', x2.toFixed(3));
+  barEl.setAttribute('y2', y2.toFixed(3));
+  barEl.setAttribute('stroke-width', bw);
+  barEl.setAttribute('stroke', fg);
+  barEl.setAttribute('stroke-linecap', linecap);
+
+  // Circle arc: gap centered at barAngle (the outer/tip side)
+  // Arc goes CW from (barAngle + gapAngle) to (barAngle - gapAngle)
+  const spanDeg = 360 - 2 * gapAngle;
+  const arcEl = document.getElementById('arcEl');
+
+  if (spanDeg <= 0) {
+    arcEl.setAttribute('d', '');
+  } else {
+    const [sx, sy] = pt(barAngle + gapAngle);
+    const [ex, ey] = pt(barAngle - gapAngle);
+    const largeArc = spanDeg > 180 ? 1 : 0;
+    // sweep=1 → CW in SVG
+    arcEl.setAttribute('d',
+      `M ${sx.toFixed(3)} ${sy.toFixed(3)} ` +
+      `A ${R} ${R} 0 ${largeArc} 1 ${ex.toFixed(3)} ${ey.toFixed(3)}`
+    );
+  }
+
+  arcEl.setAttribute('stroke-width', cw);
+  arcEl.setAttribute('stroke', fg);
+  arcEl.setAttribute('stroke-linecap', linecap);
+}
+
+function buildSVGString(withBg) {
+  const fg = getS('fgColor');
+  const bg = getS('bgColor');
+  const transparent = document.getElementById('transparentBg').checked;
+  const arc = document.getElementById('arcEl');
+  const bar = document.getElementById('barEl');
+
+  const bgRect = (withBg && !transparent)
+    ? `  <rect width="400" height="400" fill="${bg}"/>\n`
+    : '';
+
+  return `<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+${bgRect}  <path d="${arc.getAttribute('d')}" fill="none" stroke="${fg}" stroke-width="${arc.getAttribute('stroke-width')}" stroke-linecap="${arc.getAttribute('stroke-linecap')}"/>
+  <line x1="${bar.getAttribute('x1')}" y1="${bar.getAttribute('y1')}" x2="${bar.getAttribute('x2')}" y2="${bar.getAttribute('y2')}" stroke="${fg}" stroke-width="${bar.getAttribute('stroke-width')}" stroke-linecap="${bar.getAttribute('stroke-linecap')}"/>
+</svg>`;
+}
+
+function exportSVG() {
+  const svg = buildSVGString(true);
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'quiet-media-logo.svg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function copySVG() {
+  const svg = buildSVGString(true);
+  navigator.clipboard.writeText(svg).then(() => {
+    const t = document.getElementById('copy-toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1600);
+  });
+}
+
+function swapColors() {
+  const fg = document.getElementById('fgColor');
+  const bg = document.getElementById('bgColor');
+  [fg.value, bg.value] = [bg.value, fg.value];
+  render();
+}
+
+// Wire all inputs
+document.querySelectorAll('input[type="range"], input[type="color"], input[type="checkbox"]')
+  .forEach(el => el.addEventListener('input', render));
+
+render();
+</script>
+</body>
+</html>
