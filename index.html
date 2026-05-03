@@ -154,6 +154,28 @@ input[type="color"] {
 
 input[type="checkbox"] { accent-color: #888; cursor: pointer; }
 
+/* pill toggle */
+.pill-toggle { position: relative; display: inline-block; cursor: pointer; }
+.pill-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pill-track {
+  display: block;
+  width: 30px; height: 16px;
+  background: #2a2a2a;
+  border-radius: 8px;
+  position: relative;
+  transition: background 0.15s;
+}
+.pill-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  background: #555;
+  border-radius: 50%;
+  transition: left 0.15s, background 0.15s;
+}
+.pill-toggle input:checked + .pill-track { background: #3a3a3a; }
+.pill-toggle input:checked + .pill-track .pill-thumb { left: 16px; background: #ccc; }
+
 /* export */
 .panel-foot { padding: 12px 20px 0; margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
 
@@ -261,10 +283,17 @@ input[type="checkbox"] { accent-color: #888; cursor: pointer; }
 
     <div class="ctrl">
       <div class="ctrl-row">
-        <span class="ctrl-name">Gap / breathing room</span>
-        <span class="ctrl-val" id="v-gapAngle">12°</span>
+        <span class="ctrl-name" id="gap-label">Gap / breathing room</span>
+        <span class="ctrl-val" id="v-gapSlider">12°</span>
       </div>
-      <input type="range" id="gapAngle" min="1" max="85" value="12" step="0.5">
+      <input type="range" id="gapSlider" min="1" max="85" value="12" step="0.5">
+      <div class="ctrl-row" style="margin-top:8px;align-items:center">
+        <span style="font-size:11px;color:#555">Parallel to bar</span>
+        <label class="pill-toggle">
+          <input type="checkbox" id="parallelGap" onchange="onParallelToggle()">
+          <span class="pill-track"><span class="pill-thumb"></span></span>
+        </label>
+      </div>
     </div>
   </div>
 
@@ -390,9 +419,49 @@ function setLinecap(cap) {
   render();
 }
 
+function effectiveGapDeg() {
+  const parallel = document.getElementById('parallelGap').checked;
+  const sliderVal = get('gapSlider');
+  if (parallel) {
+    const halfSlot = get('barWidth') / 2 + sliderVal;
+    if (halfSlot >= R) return 89;
+    return Math.asin(halfSlot / R) * 180 / Math.PI;
+  }
+  return sliderVal;
+}
+
+function onParallelToggle() {
+  const parallel = document.getElementById('parallelGap').checked;
+  const slider   = document.getElementById('gapSlider');
+  const label    = document.getElementById('gap-label');
+  const display  = document.getElementById('v-gapSlider');
+
+  if (parallel) {
+    // convert current angle → padding: padding = R*sin(deg) - barWidth/2
+    const deg     = parseFloat(slider.value);
+    const padding = Math.max(0, Math.round(R * Math.sin(toRad(deg)) - get('barWidth') / 2));
+    slider.min   = 0;
+    slider.max   = 60;
+    slider.step  = 1;
+    slider.value = padding;
+    label.textContent = 'Gap padding';
+  } else {
+    // convert current padding → angle
+    const padding  = parseFloat(slider.value);
+    const halfSlot = get('barWidth') / 2 + padding;
+    const deg      = halfSlot >= R ? 85 : Math.asin(halfSlot / R) * 180 / Math.PI;
+    slider.min   = 1;
+    slider.max   = 85;
+    slider.step  = 0.5;
+    slider.value = deg.toFixed(1);
+    label.textContent = 'Gap / breathing room';
+  }
+  render();
+}
+
 function render() {
   const barAngle   = get('barAngle');
-  const gapAngle   = get('gapAngle');
+  const gapAngle   = effectiveGapDeg();
   const cw         = get('circleWidth');
   const bw         = get('barWidth');
   const inner      = get('innerReach');
@@ -400,9 +469,12 @@ function render() {
   const fg         = getS('fgColor');
   const bg         = getS('bgColor');
   const transparent = document.getElementById('transparentBg').checked;
+  const parallel   = document.getElementById('parallelGap').checked;
 
   document.getElementById('v-barAngle').textContent   = barAngle + '°';
-  document.getElementById('v-gapAngle').textContent   = gapAngle.toFixed(1) + '°';
+  document.getElementById('v-gapSlider').textContent  = parallel
+    ? get('gapSlider') + 'px'
+    : get('gapSlider').toFixed(1) + '°';
   document.getElementById('v-circleWidth').textContent = cw;
   document.getElementById('v-barWidth').textContent   = bw;
   document.getElementById('v-innerReach').textContent = inner + '%';
@@ -441,7 +513,7 @@ function render() {
 
   // Circle arc: gap centered at barAngle (the outer/tip side)
   // Arc goes CW from (barAngle + gapAngle) to (barAngle - gapAngle)
-  const spanDeg = 360 - 2 * gapAngle;
+  const spanDeg = 360 - 2 * gapAngle;  // gapAngle = effectiveGapDeg() result above
   const arcEl = document.getElementById('arcEl');
 
   if (spanDeg <= 0) {
