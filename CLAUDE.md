@@ -27,16 +27,22 @@ function pt(angle) {
 
 **Bar**: two endpoints computed from center along direction vector `(sin θ, −cos θ)`. `innerReach` extends in `−dir`, `outerReach` in `+dir`, both as % of R.
 
-**Arc**: SVG path `A` command, always sweep=1 (CW), large-arc flag = `spanDeg > 180 ? 1 : 0`. Gap is centered at `barAngle` (the outer/tip side of the bar). Arc runs from `barAngle + gapDeg` → `barAngle − gapDeg` the long way around.
+**Ring**: filled annulus rendered as a compound SVG path (not a stroked arc). Explicit `ringInner` (Rin) and `ringOuter` (Rout) radii. `buildRingPath()` returns a closed path:
+1. Outer arc CW (long way, sweep=1) from right gap edge to left gap edge
+2. Line inward (left slot edge)
+3. Inner arc CCW (long way, sweep=0) from left gap edge back to right gap edge
+4. Line outward (right slot edge) → Z
+
+`ptR(angle, radius)` maps compass-bearing angle + radius to SVG `[x, y]`.
 
 ### Gap modes
 
 Two modes controlled by `#parallelGap` checkbox:
 
-- **Angular** (default): `gapDeg` = slider value in degrees directly.
-- **Parallel to bar**: `gapDeg = arcsin((barWidth/2 + padding) / R)`. Gap width is a physical pixel slot — tracks bar weight automatically. Slider controls `padding` (extra px beyond bar edge on each side).
+- **Radial** (default): same angular half-offset `gapSlider/2` at both Rin and Rout. Gap edges, if extended inward, converge at center.
+- **Parallel to bar**: `gapSlider` = full angular gap at inner edge (Rin). Slot half-width `W = Rin · sin(gapSlider/2)`. Outer arc endpoints at `arcsin(W / Rout)`. Gap edges are lines parallel to the bar — straight, not converging.
 
-`effectiveGapDeg()` encapsulates the mode logic. `onParallelToggle()` converts the slider value on switch so the gap doesn't jump visually.
+`buildRingPath()` handles both modes. `onParallelToggle()` only updates the label; no slider conversion needed since both modes use degrees.
 
 ## Extending
 

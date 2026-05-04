@@ -305,10 +305,18 @@ input[type="checkbox"] { accent-color: #888; cursor: pointer; }
 
     <div class="ctrl">
       <div class="ctrl-row">
-        <span class="ctrl-name">Circle weight</span>
-        <span class="ctrl-val" id="v-circleWidth">8</span>
+        <span class="ctrl-name">Ring inner radius</span>
+        <span class="ctrl-val" id="v-ringInner">122</span>
       </div>
-      <input type="range" id="circleWidth" min="0.5" max="50" value="8" step="0.5">
+      <input type="range" id="ringInner" min="20" max="185" value="122" step="1">
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-row">
+        <span class="ctrl-name">Ring outer radius</span>
+        <span class="ctrl-val" id="v-ringOuter">138</span>
+      </div>
+      <input type="range" id="ringOuter" min="20" max="190" value="138" step="1">
     </div>
 
     <div class="ctrl">
@@ -388,7 +396,7 @@ input[type="checkbox"] { accent-color: #888; cursor: pointer; }
   <div id="logo-wrap">
     <svg id="logo-svg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
       <rect id="svgBg" width="400" height="400" fill="#111111"/>
-      <path id="arcEl" fill="none" stroke-linecap="round"/>
+      <path id="ringEl"/>
       <line id="barEl" stroke-linecap="round"/>
     </svg>
   </div>
@@ -397,15 +405,15 @@ input[type="checkbox"] { accent-color: #888; cursor: pointer; }
 </div>
 
 <script>
-const CX = 200, CY = 200, R = 130;
+const CX = 200, CY = 200, R = 130; // R = reference radius for bar reach %
 let linecap = 'round';
 
 const toRad = d => d * Math.PI / 180;
 
-// angle: 0=up, CW → SVG [x,y]
-function pt(angle) {
+// angle: 0=up, CW positive → SVG [x,y] at given radius
+function ptR(angle, radius) {
   const a = toRad(angle);
-  return [CX + R * Math.sin(a), CY - R * Math.cos(a)];
+  return [CX + radius * Math.sin(a), CY - radius * Math.cos(a)];
 }
 
 function get(id)  { return parseFloat(document.getElementById(id).value); }
@@ -419,64 +427,66 @@ function setLinecap(cap) {
   render();
 }
 
-function effectiveGapDeg() {
-  const parallel = document.getElementById('parallelGap').checked;
-  const sliderVal = get('gapSlider');
-  if (parallel) {
-    const halfSlot = get('barWidth') / 2 + sliderVal;
-    if (halfSlot >= R) return 89;
-    return Math.asin(halfSlot / R) * 180 / Math.PI;
-  }
-  return sliderVal;
-}
-
 function onParallelToggle() {
   const parallel = document.getElementById('parallelGap').checked;
-  const slider   = document.getElementById('gapSlider');
-  const label    = document.getElementById('gap-label');
-  const display  = document.getElementById('v-gapSlider');
-
-  if (parallel) {
-    // convert current angle → padding: padding = R*sin(deg) - barWidth/2
-    const deg     = parseFloat(slider.value);
-    const padding = Math.max(0, Math.round(R * Math.sin(toRad(deg)) - get('barWidth') / 2));
-    slider.min   = 0;
-    slider.max   = 60;
-    slider.step  = 1;
-    slider.value = padding;
-    label.textContent = 'Gap padding';
-  } else {
-    // convert current padding → angle
-    const padding  = parseFloat(slider.value);
-    const halfSlot = get('barWidth') / 2 + padding;
-    const deg      = halfSlot >= R ? 85 : Math.asin(halfSlot / R) * 180 / Math.PI;
-    slider.min   = 1;
-    slider.max   = 85;
-    slider.step  = 0.5;
-    slider.value = deg.toFixed(1);
-    label.textContent = 'Gap / breathing room';
-  }
+  document.getElementById('gap-label').textContent = parallel
+    ? 'Gap at inner edge'
+    : 'Gap / breathing room';
   render();
+}
+
+// Builds the filled annulus path with a gap at barAngle.
+// Radial mode:   same angular half-offset (gapSlider/2) at both Rin and Rout.
+//                Gap edges, if extended inward, point to center.
+// Parallel mode: gapSlider = full angular gap at Rin.
+//                W = Rin·sin(gapSlider/2). Outer endpoints at arcsin(W/Rout).
+//                Gap edges are lines parallel to the bar.
+// Path: outer arc CW (long way) → left slot edge → inner arc CCW (long way) → right slot edge → Z
+function buildRingPath(barAngle, gapSliderVal, Rin, Rout) {
+  const parallel = document.getElementById('parallelGap').checked;
+  const f = n => n.toFixed(3);
+
+  let hoOuter, hoInner; // half-angle offsets at outer and inner radii
+  if (!parallel) {
+    hoOuter = hoInner = gapSliderVal / 2;
+  } else {
+    hoInner = gapSliderVal / 2;
+    const W = Rin * Math.sin(toRad(hoInner));
+    hoOuter = W >= Rout ? 89 : Math.asin(W / Rout) * 180 / Math.PI;
+  }
+
+  const [osx, osy] = ptR(barAngle + hoOuter, Rout); // outer right (start)
+  const [oex, oey] = ptR(barAngle - hoOuter, Rout); // outer left  (end)
+  const [isx, isy] = ptR(barAngle + hoInner, Rin);  // inner right (end of inner arc)
+  const [iex, iey] = ptR(barAngle - hoInner, Rin);  // inner left  (start of inner arc)
+
+  const oLarge = (360 - 2 * hoOuter) > 180 ? 1 : 0;
+  const iLarge = (360 - 2 * hoInner) > 180 ? 1 : 0;
+
+  return `M ${f(osx)} ${f(osy)} ` +
+         `A ${Rout} ${Rout} 0 ${oLarge} 1 ${f(oex)} ${f(oey)} ` +  // outer CW
+         `L ${f(iex)} ${f(iey)} ` +                                  // left edge
+         `A ${Rin} ${Rin} 0 ${iLarge} 0 ${f(isx)} ${f(isy)} ` +    // inner CCW
+         `L ${f(osx)} ${f(osy)} Z`;                                  // right edge
 }
 
 function render() {
   const barAngle   = get('barAngle');
-  const gapAngle   = effectiveGapDeg();
-  const cw         = get('circleWidth');
+  const gapSliderVal = get('gapSlider');
+  const Rin        = get('ringInner');
+  const Rout       = get('ringOuter');
   const bw         = get('barWidth');
   const inner      = get('innerReach');
   const outer      = get('outerReach');
   const fg         = getS('fgColor');
   const bg         = getS('bgColor');
   const transparent = document.getElementById('transparentBg').checked;
-  const parallel   = document.getElementById('parallelGap').checked;
 
-  document.getElementById('v-barAngle').textContent   = barAngle + '°';
-  document.getElementById('v-gapSlider').textContent  = parallel
-    ? get('gapSlider') + 'px'
-    : get('gapSlider').toFixed(1) + '°';
-  document.getElementById('v-circleWidth').textContent = cw;
-  document.getElementById('v-barWidth').textContent   = bw;
+  document.getElementById('v-barAngle').textContent  = barAngle + '°';
+  document.getElementById('v-gapSlider').textContent = gapSliderVal.toFixed(1) + '°';
+  document.getElementById('v-ringInner').textContent = Rin;
+  document.getElementById('v-ringOuter').textContent = Rout;
+  document.getElementById('v-barWidth').textContent  = bw;
   document.getElementById('v-innerReach').textContent = inner + '%';
   document.getElementById('v-outerReach').textContent = outer + '%';
 
@@ -490,13 +500,9 @@ function render() {
     svgBg.setAttribute('fill-opacity', '1');
   }
 
-  // Bar direction unit vector (barAngle=0 → pointing up)
+  // Bar
   const a  = toRad(barAngle);
-  const dx = Math.sin(a);
-  const dy = -Math.cos(a);
-
-  // inner: bar extends from center in -dir (tail, away from gap)
-  // outer: bar extends from center in +dir (tip, toward gap)
+  const dx = Math.sin(a), dy = -Math.cos(a);
   const x1 = CX - dx * R * inner / 100;
   const y1 = CY - dy * R * inner / 100;
   const x2 = CX + dx * R * outer / 100;
@@ -511,42 +517,29 @@ function render() {
   barEl.setAttribute('stroke', fg);
   barEl.setAttribute('stroke-linecap', linecap);
 
-  // Circle arc: gap centered at barAngle (the outer/tip side)
-  // Arc goes CW from (barAngle + gapAngle) to (barAngle - gapAngle)
-  const spanDeg = 360 - 2 * gapAngle;  // gapAngle = effectiveGapDeg() result above
-  const arcEl = document.getElementById('arcEl');
-
-  if (spanDeg <= 0) {
-    arcEl.setAttribute('d', '');
+  // Ring (filled annulus with gap)
+  const ringEl = document.getElementById('ringEl');
+  if (Rin >= Rout || gapSliderVal >= 180) {
+    ringEl.setAttribute('d', '');
   } else {
-    const [sx, sy] = pt(barAngle + gapAngle);
-    const [ex, ey] = pt(barAngle - gapAngle);
-    const largeArc = spanDeg > 180 ? 1 : 0;
-    // sweep=1 → CW in SVG
-    arcEl.setAttribute('d',
-      `M ${sx.toFixed(3)} ${sy.toFixed(3)} ` +
-      `A ${R} ${R} 0 ${largeArc} 1 ${ex.toFixed(3)} ${ey.toFixed(3)}`
-    );
+    ringEl.setAttribute('d', buildRingPath(barAngle, gapSliderVal, Rin, Rout));
   }
-
-  arcEl.setAttribute('stroke-width', cw);
-  arcEl.setAttribute('stroke', fg);
-  arcEl.setAttribute('stroke-linecap', linecap);
+  ringEl.setAttribute('fill', fg);
 }
 
 function buildSVGString(withBg) {
-  const fg = getS('fgColor');
-  const bg = getS('bgColor');
+  const fg  = getS('fgColor');
+  const bg  = getS('bgColor');
   const transparent = document.getElementById('transparentBg').checked;
-  const arc = document.getElementById('arcEl');
-  const bar = document.getElementById('barEl');
+  const ring = document.getElementById('ringEl');
+  const bar  = document.getElementById('barEl');
 
   const bgRect = (withBg && !transparent)
     ? `  <rect width="400" height="400" fill="${bg}"/>\n`
     : '';
 
   return `<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
-${bgRect}  <path d="${arc.getAttribute('d')}" fill="none" stroke="${fg}" stroke-width="${arc.getAttribute('stroke-width')}" stroke-linecap="${arc.getAttribute('stroke-linecap')}"/>
+${bgRect}  <path d="${ring.getAttribute('d')}" fill="${fg}"/>
   <line x1="${bar.getAttribute('x1')}" y1="${bar.getAttribute('y1')}" x2="${bar.getAttribute('x2')}" y2="${bar.getAttribute('y2')}" stroke="${fg}" stroke-width="${bar.getAttribute('stroke-width')}" stroke-linecap="${bar.getAttribute('stroke-linecap')}"/>
 </svg>`;
 }
